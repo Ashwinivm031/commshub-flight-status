@@ -9,7 +9,7 @@ http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/
 http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
 http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd">
 			<flow name="jms-consumerFlow" doc:id="55ff1fa1-62fd-4bd6-b217-05ea472634d4" >
-		<jms:listener doc:name="Flight Status Event Listner" doc:id="5a34a21e-442d-4a3f-89c4-b29c98505eb2" config-ref="JMS_Config" destination="Consumer.15Below.VirtualTopic.events.airline.flops.flight-status" ackMode="AUTO" numberOfConsumers="1" selector="JMSType='FlightStatusCanceledEvent' OR JMSType='FlightStatusRescheduledEvent'">
+		<jms:listener doc:name="Flight Status Event Listner" doc:id="5a34a21e-442d-4a3f-89c4-b29c98505eb2" config-ref="JMS_Config" destination="${activemq.queue-consumer.flight-status-event-topic}" ackMode="AUTO" numberOfConsumers="1" selector="JMSType='${activemq.JMSType.CancelledEvent}' OR JMSType='${activemq.JMSType.RescheduledEvent}' OR JMSType='${activemq.JMSType.DelayedEvent}'">
 			<jms:consumer-type >
 				<jms:queue-consumer />
 			</jms:consumer-type>

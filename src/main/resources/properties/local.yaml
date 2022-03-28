@@ -1,11 +1,13 @@
-amq-consumer:
-  flight-status-event-queue-consumer: "Consumer.Trax.VirtualTopic.g4flight-sync"
-  
 activemq:
-  user: "admin"
-  password: "admin123"
   broker-url: "failover:(tcp://jbossamq11.in2.allegiantair.com:61616,tcp://jbossamq12.in2.allegiantair.com:61616)?randomize=false&initialReconnectDelay=10000&jms.rmIdFromConnectionId=true&maxReconnectAttempts=0"
+  user: "admin" 
   redelivery:
     max-attempts: "3"
     initial-delay: "3600000"
     delay: "3600000"
+  queue-consumer:
+    flight-status-event-topic: "Consumer.15Below.VirtualTopic.events.airline.flops.flight-status"
+  JMSType:
+    CancelledEvent: "FlightStatusCanceledEvent"
+    RescheduledEvent: "FlightStatusRescheduledEvent"
+    DelayedEvent: "FlightStatusDelayedEvent"

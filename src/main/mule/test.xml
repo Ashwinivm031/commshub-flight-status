@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="6305e4bb-ca1f-4725-b829-ca981f7087b3" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<flow name="testFlow" doc:id="2afbac7e-9f13-488d-9207-b8615058cbec" >
+		<http:listener doc:name="Listener" doc:id="21fbe1f6-c7be-48f5-9936-a5135b0b1d8e" config-ref="HTTP_Listener_config" path="/test"/>
+		<logger level="INFO" doc:name="Logger" doc:id="14252ed3-d457-4c3e-b52b-9022a83bcd2e" message="JMSType='${activemq.JMSType.CancelledEvent}' OR JMSType='${activemq.JMSType.RescheduledEvent}' OR JMSType='${activemq.JMSType.DelayedEvent}'"/>
+		<ee:transform doc:name="Transform Message" doc:id="0e77a038-d635-42c9-a2c1-cb40339cde25" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	test: p('activemq.queue-consumer.flight-status-event-topic')
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>
