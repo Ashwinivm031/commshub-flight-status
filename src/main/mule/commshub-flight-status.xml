@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns:jms="http://www.mulesoft.org/schema/mule/jms"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd 
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd">
+			<flow name="jms-consumerFlow" doc:id="55ff1fa1-62fd-4bd6-b217-05ea472634d4" >
+		<jms:listener doc:name="Flight Status Event Listner" doc:id="5a34a21e-442d-4a3f-89c4-b29c98505eb2" config-ref="JMS_Config" destination="Consumer.15Below.VirtualTopic.events.airline.flops.flight-status" ackMode="AUTO" numberOfConsumers="1" selector="JMSType='FlightStatusCanceledEvent' OR JMSType='FlightStatusRescheduledEvent'">
+			<jms:consumer-type >
+				<jms:queue-consumer />
+			</jms:consumer-type>
+			<jms:response sendCorrelationId="AUTO"/>
+		</jms:listener>
+		<set-variable value='#[attributes.headers."JMSType"]' doc:name="Set JMSEventType" doc:id="3db85cc7-014c-4113-8f86-485649829f5b" variableName="JMSEventType"/>
+		<ee:transform doc:name="Trasform payload to Json" doc:id="39994398-cae7-4ff9-8e53-3eb9f24bc29c" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+
+---
+read(payload,"application/json")
+]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<ee:transform doc:name="Build Request for Flight-Status Api" doc:id="beb1412c-a63d-40dc-9b3c-b777ea5d3192" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/xml
+
+ns soapenv http://schemas.xmlsoap.org/soap/envelope/
+ns flig http://schemas.15below.com/flightTrigger.criteria
+ns fif http://schemas.datacontract.org/2004/07/FifteenBelow.FlightStatus.FlightTriggerObjects
+var flightStatusEvent = (readUrl("classpath://FlightStatusEventMapping.json","application/json"))
+---
+{
+    soapenv#Envelope:
+    {     
+        soapenv#Body:
+            flig#NewFlightTrigger: 
+            {
+                flig#flightStatus:
+                {
+                    fif#ChangeDetail:  
+                    {
+                        fif#ChangeEvent: (flightStatusEvent filter($.JMSEventType == vars.JMSEventType))[0].FlightStatusEvent,
+                        fif#ChangedFlightLeg: payload.impactedLeg as String,
+                        fif#NewValue: null
+                    },
+                    fif#FlightInformation:{
+                        fif#CarrierCode: "G4",
+                        fif#DepartureDate: payload.flightInfo.legInfo.departureDateTime[0].scheduledUTC,
+                        fif#FlightLegs: (payload.flightInfo.legInfo map
+                        {
+                            fif#FSFlightLeg:
+                            {
+                                fif#FSFlightArrival: 
+                                {
+                                    fif#AirportCode: $.arrivalAirport.locationCode,
+                                    fif#Estimated: $.arrivalDateTime.estimatedUTC,
+                                    fif#Scheduled: $.arrivalDateTime.scheduledUTC
+                                },
+                                fif#FSFlightDeparture: {                                                                 fif#AirportCode: $.departureAirport.locationCode,
+                                    fif#Estimated: $.departureDateTime.estimatedUTC,
+                                    fif#Scheduled: $.departureDateTime.scheduledUTC
+                                },  
+                                fif#FSFlightLegState:
+                                {
+                                    fif#Cancelled: $.cancelled,
+                                    fif#Diverted: false,
+                                    fif#Scheduled: true
+                                },
+                                fif#FlightLeg: $.nbr                   
+
+                            }
+                        }) distinctBy $,
+                    fif#FlightNumber: payload.flightInfo.nbr
+                },
+                fif#JobID: attributes.headers."JMSCorrelationID"
+            }        
+        }
+    }
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="648bf2af-a332-45a6-ae6e-7b8c9a2ddf4e" message="#[payload]"/>
+		<file:write doc:name="Write" doc:id="5b0329cf-1a05-400f-8997-e5572bcc3841" config-ref="File_Config" path='#["/home/ashwini/Documents/Flight-Status-Xml/"++ vars.JMSEventType default ""++".xml"]'/>
+	</flow>
+	</mule>

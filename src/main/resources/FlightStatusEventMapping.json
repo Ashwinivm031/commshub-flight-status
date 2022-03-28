@@ -1,0 +1,10 @@
+[
+	{
+		"JMSEventType" : "FlightStatusCanceledEvent",
+		"FlightStatusEvent": "FlightCancelled"
+	},
+	{
+		"JMSEventType" : "FlightStatusRescheduledEvent",
+		"FlightStatusEvent": "ETDChange"
+	}
+]
