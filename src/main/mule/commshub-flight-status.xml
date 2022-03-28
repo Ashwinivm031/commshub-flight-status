@@ -1,14 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:file="http://www.mulesoft.org/schema/mule/file"
-	xmlns:jms="http://www.mulesoft.org/schema/mule/jms"
-	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core"
-	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+<mule xmlns:module-aip-logging="http://www.mulesoft.org/schema/mule/module-aip-logging"
+	xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns:jms="http://www.mulesoft.org/schema/mule/jms" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
 http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd 
 http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
-http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd">
-			<flow name="jms-consumerFlow" doc:id="55ff1fa1-62fd-4bd6-b217-05ea472634d4" >
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/module-aip-logging http://www.mulesoft.org/schema/mule/module-aip-logging/current/mule-module-aip-logging.xsd">
+			<module-aip-logging:config name="Aip_logging_Config" doc:name="Aip-logging Config" doc:id="92559272-4946-4a2a-b133-e2eeab8be8b0" app="commshub-flight-status" appVersion="1.0.0-SNAPSHOT" />
+	<flow name="jms-consumerFlow" doc:id="55ff1fa1-62fd-4bd6-b217-05ea472634d4" >
 		<jms:listener doc:name="Flight Status Event Listner" doc:id="5a34a21e-442d-4a3f-89c4-b29c98505eb2" config-ref="JMS_Config" destination="${activemq.queue-consumer.flight-status-event-topic}" ackMode="AUTO" numberOfConsumers="1" selector="JMSType='${activemq.JMSType.CancelledEvent}' OR JMSType='${activemq.JMSType.RescheduledEvent}' OR JMSType='${activemq.JMSType.DelayedEvent}'">
 			<jms:consumer-type >
 				<jms:queue-consumer />
@@ -16,6 +18,7 @@ http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/fil
 			<jms:response sendCorrelationId="AUTO"/>
 		</jms:listener>
 		<set-variable value='#[attributes.headers."JMSType"]' doc:name="Set JMSEventType" doc:id="3db85cc7-014c-4113-8f86-485649829f5b" variableName="JMSEventType"/>
+		<module-aip-logging:log-entry doc:name="Log entry" doc:id="b776b8e0-8756-4515-8e74-de065c26c363" config-ref="Aip_logging_Config" message='#["The " ++ vars.JMSEventType default "" ++ " triggered"]' />
 		<ee:transform doc:name="Trasform payload to Json" doc:id="39994398-cae7-4ff9-8e53-3eb9f24bc29c" >
 			<ee:message >
 				<ee:set-payload ><![CDATA[%dw 2.0
