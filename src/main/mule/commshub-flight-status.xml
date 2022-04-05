@@ -15,7 +15,7 @@ http://www.mulesoft.org/schema/mule/module-aip-logging http://www.mulesoft.org/s
 			<jms:consumer-type >
 				<jms:queue-consumer />
 			</jms:consumer-type>
-			<jms:response sendCorrelationId="AUTO"/>
+			<jms:response sendCorrelationId="ALWAYS"/>
 		</jms:listener>
 		<set-variable value='#[attributes.headers."JMSType"]' doc:name="Set JMSEventType" doc:id="3db85cc7-014c-4113-8f86-485649829f5b" variableName="JMSEventType"/>
 		<module-aip-logging:log-entry doc:name="Log entry" doc:id="b776b8e0-8756-4515-8e74-de065c26c363" config-ref="Aip_logging_Config" message='#["The " ++ vars.JMSEventType default "" ++ " triggered"]' />
@@ -50,7 +50,7 @@ var flightStatusEvent = (readUrl("classpath://FlightStatusEventMapping.json","ap
                     fif#ChangeDetail:  
                     {
                         fif#ChangeEvent: (flightStatusEvent filter($.JMSEventType == vars.JMSEventType))[0].FlightStatusEvent,
-                        fif#ChangedFlightLeg: payload.impactedLeg as String,
+                        fif#ChangedFlightLeg: payload.impactedLeg,
                         fif#NewValue: null
                     },
                     fif#FlightInformation:{
@@ -82,14 +82,14 @@ var flightStatusEvent = (readUrl("classpath://FlightStatusEventMapping.json","ap
                         }) distinctBy $,
                     fif#FlightNumber: payload.flightInfo.nbr
                 },
-                fif#JobID: attributes.headers."JMSCorrelationID"
+                fif#JobID: correlationId
             }        
         }
     }
 }]]></ee:set-payload>
 			</ee:message>
 		</ee:transform>
-		<logger level="INFO" doc:name="Logger" doc:id="648bf2af-a332-45a6-ae6e-7b8c9a2ddf4e" message="#[payload]"/>
+		<logger level="INFO" doc:name="Logger" doc:id="648bf2af-a332-45a6-ae6e-7b8c9a2ddf4e" message="#[payload]" />
 		<file:write doc:name="Write" doc:id="5b0329cf-1a05-400f-8997-e5572bcc3841" config-ref="File_Config" path='#["/home/ashwini/Documents/Flight-Status-Xml/"++ vars.JMSEventType default ""++".xml"]'/>
 	</flow>
 	</mule>
