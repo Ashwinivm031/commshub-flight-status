@@ -1,15 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:module-aip-logging="http://www.mulesoft.org/schema/mule/module-aip-logging"
-	xmlns:file="http://www.mulesoft.org/schema/mule/file"
-	xmlns:jms="http://www.mulesoft.org/schema/mule/jms" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
-	xmlns="http://www.mulesoft.org/schema/mule/core"
-	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+<mule xmlns:wsc="http://www.mulesoft.org/schema/mule/wsc"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:module-aip-logging="http://www.mulesoft.org/schema/mule/module-aip-logging" xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns:jms="http://www.mulesoft.org/schema/mule/jms"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
 http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd 
 http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
 http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
-http://www.mulesoft.org/schema/mule/module-aip-logging http://www.mulesoft.org/schema/mule/module-aip-logging/current/mule-module-aip-logging.xsd">
-			<module-aip-logging:config name="Aip_logging_Config" doc:name="Aip-logging Config" doc:id="92559272-4946-4a2a-b133-e2eeab8be8b0" app="commshub-flight-status" appVersion="1.0.0-SNAPSHOT" />
+http://www.mulesoft.org/schema/mule/module-aip-logging http://www.mulesoft.org/schema/mule/module-aip-logging/current/mule-module-aip-logging.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/wsc http://www.mulesoft.org/schema/mule/wsc/current/mule-wsc.xsd">
+			
 	<flow name="jms-consumerFlow" doc:id="55ff1fa1-62fd-4bd6-b217-05ea472634d4" >
 		<jms:listener doc:name="Flight Status Event Listner" doc:id="5a34a21e-442d-4a3f-89c4-b29c98505eb2" config-ref="JMS_Config" destination="${activemq.queue-consumer.flight-status-event-topic}" ackMode="AUTO" numberOfConsumers="1" selector="JMSType='${activemq.JMSType.CancelledEvent}' OR JMSType='${activemq.JMSType.RescheduledEvent}' OR JMSType='${activemq.JMSType.DelayedEvent}'">
 			<jms:consumer-type >
@@ -18,7 +20,7 @@ http://www.mulesoft.org/schema/mule/module-aip-logging http://www.mulesoft.org/s
 			<jms:response sendCorrelationId="ALWAYS"/>
 		</jms:listener>
 		<set-variable value='#[attributes.headers."JMSType"]' doc:name="Set JMSEventType" doc:id="3db85cc7-014c-4113-8f86-485649829f5b" variableName="JMSEventType"/>
-		<module-aip-logging:log-entry doc:name="Log entry" doc:id="b776b8e0-8756-4515-8e74-de065c26c363" config-ref="Aip_logging_Config" message='#["The " ++ vars.JMSEventType default "" ++ " triggered"]' />
+		<module-aip-logging:log-entry doc:name="Log The Event" doc:id="b776b8e0-8756-4515-8e74-de065c26c363" config-ref="Aip_logging_Config" message='#["The " ++ vars.JMSEventType default "" ++ " triggered"]' />
 		<ee:transform doc:name="Trasform payload to Json" doc:id="39994398-cae7-4ff9-8e53-3eb9f24bc29c" >
 			<ee:message >
 				<ee:set-payload ><![CDATA[%dw 2.0
@@ -38,6 +40,20 @@ ns soapenv http://schemas.xmlsoap.org/soap/envelope/
 ns flig http://schemas.15below.com/flightTrigger.criteria
 ns fif http://schemas.datacontract.org/2004/07/FifteenBelow.FlightStatus.FlightTriggerObjects
 var flightStatusEvent = (readUrl("classpath://FlightStatusEventMapping.json","application/json"))
+
+fun getFlightTravelInfo(airport, dateTime)=do {
+ if(dateTime.estimatedUTC !=null) 
+            {
+                fif#AirportCode: airport.locationCode,
+                fif#Estimated:dateTime.estimatedUTC as DateTime,    
+                fif#Scheduled: dateTime.scheduledUTC as DateTime
+            }
+            else   
+            {
+                fif#AirportCode: airport.locationCode,         
+                fif#Scheduled: dateTime.scheduledUTC as DateTime
+            }
+    }
 ---
 {
     soapenv#Envelope:
@@ -55,21 +71,13 @@ var flightStatusEvent = (readUrl("classpath://FlightStatusEventMapping.json","ap
                     },
                     fif#FlightInformation:{
                         fif#CarrierCode: "G4",
-                        fif#DepartureDate: payload.flightInfo.legInfo.departureDateTime[0].scheduledUTC,
+                        fif#DepartureDate: payload.flightInfo.legInfo.departureDateTime[0].scheduledUTC as DateTime,
                         fif#FlightLegs: (payload.flightInfo.legInfo map
                         {
                             fif#FSFlightLeg:
                             {
-                                fif#FSFlightArrival: 
-                                {
-                                    fif#AirportCode: $.arrivalAirport.locationCode,
-                                    fif#Estimated: $.arrivalDateTime.estimatedUTC,
-                                    fif#Scheduled: $.arrivalDateTime.scheduledUTC
-                                },
-                                fif#FSFlightDeparture: {                                                                 fif#AirportCode: $.departureAirport.locationCode,
-                                    fif#Estimated: $.departureDateTime.estimatedUTC,
-                                    fif#Scheduled: $.departureDateTime.scheduledUTC
-                                },  
+                           		fif#FSFlightArrival: getFlightTravelInfo($.arrivalAirport, $.arrivalDateTime),
+                                fif#FSFlightDeparture: getFlightTravelInfo($.departureAirport, $.departureDateTime),
                                 fif#FSFlightLegState:
                                 {
                                     fif#Cancelled: $.cancelled,
@@ -89,7 +97,30 @@ var flightStatusEvent = (readUrl("classpath://FlightStatusEventMapping.json","ap
 }]]></ee:set-payload>
 			</ee:message>
 		</ee:transform>
-		<logger level="INFO" doc:name="Logger" doc:id="648bf2af-a332-45a6-ae6e-7b8c9a2ddf4e" message="#[payload]" />
-		<file:write doc:name="Write" doc:id="5b0329cf-1a05-400f-8997-e5572bcc3841" config-ref="File_Config" path='#["/home/ashwini/Documents/Flight-Status-Xml/"++ vars.JMSEventType default ""++".xml"]'/>
+		<flow-ref doc:name="Call: Flight Status" doc:id="64c690c8-4d32-43e5-b20a-228588785eb4" name="flightStatusFlow"/>
+		<module-aip-logging:log-entry doc:name="Log Success" doc:id="1b97bd0f-0d24-438c-95a5-b91f95e8f67b" config-ref="Aip_logging_Config" message='#["15Below API call Success":payload]'/>
+		<error-handler >
+			<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="9595fbcb-d42a-4220-b234-c26c3888d02f" type="ANY">
+				<module-aip-logging:log-error doc:name="Log error" doc:id="40d06b0a-22da-4055-ba7d-dd5677922683" config-ref="Aip_logging_Config" message='#["Error occurred while parsing the event":payload]'/>
+			</on-error-continue>
+		</error-handler>
 	</flow>
+	<sub-flow name="flightStatusFlow" doc:id="2e345e4d-4788-48e3-ad1b-fcd6047196f2">	
+			<http:request method="POST" doc:name="Flight Status Service" doc:id="641040c1-888d-45f2-9f82-5401499fe143" config-ref="HTTP_15Below_Request_configuration" path="/FlightStatus.svc" sendCorrelationId="AUTO">
+			<http:headers ><![CDATA[#[output application/java
+---
+{
+	"SOAPAction" : "http://schemas.15below.com/flightTrigger.criteria/IFlightStatus/NewFlightTrigger",
+	"Content-Type" : "text/xml"
+}]]]></http:headers>
+		</http:request>
+		<ee:transform doc:name="Transform Message" doc:id="9c97d0b5-c088-416a-b110-2d5111229456" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</sub-flow>
 	</mule>

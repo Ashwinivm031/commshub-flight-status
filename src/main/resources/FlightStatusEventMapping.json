@@ -4,7 +4,7 @@
 		"FlightStatusEvent": "FlightCancelled"
 	},
 	{
-		"JMSEventType" : "FlightStatusDelayedEvent",
+		"JMSEventType" : "FlightStatusDelayEvent",
 		"FlightStatusEvent": "ETDChange"
 	},
 	{

@@ -10,4 +10,4 @@ activemq:
   JMSType:
     CancelledEvent: "FlightStatusCanceledEvent"
     RescheduledEvent: "FlightStatusRescheduledEvent"
-    DelayedEvent: "FlightStatusDelayedEvent"
+    DelayedEvent: "FlightStatusDelayEvent"

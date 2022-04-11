@@ -1,11 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:secure-properties="http://www.mulesoft.org/schema/mule/secure-properties"
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:secure-properties="http://www.mulesoft.org/schema/mule/secure-properties"
+	xmlns:module-aip-logging="http://www.mulesoft.org/schema/mule/module-aip-logging" 
 	xmlns:file="http://www.mulesoft.org/schema/mule/file"
 	xmlns:jms="http://www.mulesoft.org/schema/mule/jms" xmlns="http://www.mulesoft.org/schema/mule/core"
 	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd 
 http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd 
+http://www.mulesoft.org/schema/mule/module-aip-logging http://www.mulesoft.org/schema/mule/module-aip-logging/current/mule-module-aip-logging.xsd
 http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
 http://www.mulesoft.org/schema/mule/secure-properties http://www.mulesoft.org/schema/mule/secure-properties/current/mule-secure-properties.xsd">
 	<jms:config name="JMS_Config" doc:name="JMS Config" doc:id="08b733eb-fff0-4fae-aba8-1bc96c6ae382" >
@@ -23,5 +27,8 @@ http://www.mulesoft.org/schema/mule/secure-properties http://www.mulesoft.org/sc
 		<secure-properties:encrypt algorithm="Blowfish" />
 	</secure-properties:config>
 	<global-property doc:name="Global Property" doc:id="bd2b254f-0443-4420-81f7-f20565286489" name="key" value="password#123" />
-	
+		<http:request-config name="HTTP_15Below_Request_configuration" doc:name="HTTP Request configuration" doc:id="889e95a7-3291-400d-a758-02b632461fb9" basePath="/v2_0_0" >
+		<http:request-connection protocol="HTTPS" host="g4-tst-flightstatus-api.pasngr.com" />
+	</http:request-config>
+	<module-aip-logging:config name="Aip_logging_Config" doc:name="Aip-logging Config" doc:id="3368e798-2742-4bfb-bd12-c9474b208bc0" app="commshub-flight-status" appVersion="1.0.0-SNAPSHOT" />
 	</mule>
