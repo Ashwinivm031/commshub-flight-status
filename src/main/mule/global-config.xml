@@ -27,8 +27,8 @@ http://www.mulesoft.org/schema/mule/secure-properties http://www.mulesoft.org/sc
 		<secure-properties:encrypt algorithm="Blowfish" />
 	</secure-properties:config>
 	<global-property doc:name="Global Property" doc:id="bd2b254f-0443-4420-81f7-f20565286489" name="key" value="password#123" />
-		<http:request-config name="HTTP_15Below_Request_configuration" doc:name="HTTP Request configuration" doc:id="889e95a7-3291-400d-a758-02b632461fb9" basePath="/v2_0_0" >
-		<http:request-connection protocol="HTTPS" host="g4-tst-flightstatus-api.pasngr.com" />
+		<http:request-config name="HTTP_15Below_Request_configuration" doc:name="HTTP Request configuration" doc:id="889e95a7-3291-400d-a758-02b632461fb9">
+		<http:request-connection protocol="HTTPS" host="${http.fifteenBelow.flight-status.host}" connectionIdleTimeout="${http.timeoutInMillis}"/>
 	</http:request-config>
 	<module-aip-logging:config name="Aip_logging_Config" doc:name="Aip-logging Config" doc:id="3368e798-2742-4bfb-bd12-c9474b208bc0" app="commshub-flight-status" appVersion="1.0.0-SNAPSHOT" />
 	</mule>

@@ -11,3 +11,12 @@ activemq:
     CancelledEvent: "FlightStatusCanceledEvent"
     RescheduledEvent: "FlightStatusRescheduledEvent"
     DelayedEvent: "FlightStatusDelayEvent"
+http:
+  timeoutInMillis: "300000"
+  fifteenBelow:
+    flight-status:
+      host: "g4-tst-flightstatus-api.pasngr.com"
+      path: "/v2_0_0/FlightStatus.svc"
+      soapAction: "http://schemas.15below.com/flightTrigger.criteria/IFlightStatus/NewFlightTrigger"
+      maxRetries: "3"
+      millisBetweenRetries: "1000"

@@ -17,10 +17,11 @@ http://www.mulesoft.org/schema/mule/wsc http://www.mulesoft.org/schema/mule/wsc/
 			<jms:consumer-type >
 				<jms:queue-consumer />
 			</jms:consumer-type>
-			<jms:response sendCorrelationId="ALWAYS"/>
+			<jms:response sendCorrelationId="ALWAYS" persistentDelivery="true"/>
 		</jms:listener>
 		<set-variable value='#[attributes.headers."JMSType"]' doc:name="Set JMSEventType" doc:id="3db85cc7-014c-4113-8f86-485649829f5b" variableName="JMSEventType"/>
-		<module-aip-logging:log-entry doc:name="Log The Event" doc:id="b776b8e0-8756-4515-8e74-de065c26c363" config-ref="Aip_logging_Config" message='#["The " ++ vars.JMSEventType default "" ++ " triggered"]' />
+		<logger level="INFO" doc:name="Logger" doc:id="bc721d2d-37ce-4125-b3d3-ae83db1a52ce" />
+		<module-aip-logging:log-entry doc:name="Log The Received Event" doc:id="b776b8e0-8756-4515-8e74-de065c26c363" config-ref="Aip_logging_Config" message='#["The " ++ vars.JMSEventType default "" ++ " triggered"]' />
 		<ee:transform doc:name="Trasform payload to Json" doc:id="39994398-cae7-4ff9-8e53-3eb9f24bc29c" >
 			<ee:message >
 				<ee:set-payload ><![CDATA[%dw 2.0
@@ -31,9 +32,20 @@ read(payload,"application/json")
 ]]></ee:set-payload>
 			</ee:message>
 		</ee:transform>
-		<ee:transform doc:name="Build Request for Flight-Status Api" doc:id="beb1412c-a63d-40dc-9b3c-b777ea5d3192" >
-			<ee:message >
-				<ee:set-payload ><![CDATA[%dw 2.0
+		<logger level="INFO" doc:name="Logger" doc:id="82593fea-8210-4372-ba24-aadab416f114" message="#[payload]"/>
+		<flow-ref doc:name="Call: Flight Status" doc:id="64c690c8-4d32-43e5-b20a-228588785eb4" name="flightStatusFlow"/>
+		<raise-error doc:name="Raise error" doc:id="cedc3290-0101-4fae-93c4-5ae18a08f2be" type="HTTP:ANY" description='"Custom exception"'/>
+		<module-aip-logging:log-entry doc:name="Log Success" doc:id="1b97bd0f-0d24-438c-95a5-b91f95e8f67b" config-ref="Aip_logging_Config" message='#["15Below API call Success":payload]'/>
+		<error-handler>
+			<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="b9a19321-64dc-4c93-9e30-a2135bf41b5a" type="ANY">
+				<module-aip-logging:log-error doc:name="Log error" doc:id="40d06b0a-22da-4055-ba7d-dd5677922683" config-ref="Aip_logging_Config" message='#["Error occurred while parsing the event":payload]' />
+			</on-error-continue>
+		</error-handler>
+	</flow>
+	<sub-flow name="flightStatusFlow" doc:id="2e345e4d-4788-48e3-ad1b-fcd6047196f2">	
+			<ee:transform doc:name="Build Request for Flight-Status Api" doc:id="d74bcaf3-8a14-47ba-af8c-f5524b7356a0">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
 output application/xml
 
 ns soapenv http://schemas.xmlsoap.org/soap/envelope/
@@ -97,24 +109,17 @@ fun getFlightTravelInfo(airport, dateTime)=do {
 }]]></ee:set-payload>
 			</ee:message>
 		</ee:transform>
-		<flow-ref doc:name="Call: Flight Status" doc:id="64c690c8-4d32-43e5-b20a-228588785eb4" name="flightStatusFlow"/>
-		<module-aip-logging:log-entry doc:name="Log Success" doc:id="1b97bd0f-0d24-438c-95a5-b91f95e8f67b" config-ref="Aip_logging_Config" message='#["15Below API call Success":payload]'/>
-		<error-handler >
-			<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="9595fbcb-d42a-4220-b234-c26c3888d02f" type="ANY">
-				<module-aip-logging:log-error doc:name="Log error" doc:id="40d06b0a-22da-4055-ba7d-dd5677922683" config-ref="Aip_logging_Config" message='#["Error occurred while parsing the event":payload]'/>
-			</on-error-continue>
-		</error-handler>
-	</flow>
-	<sub-flow name="flightStatusFlow" doc:id="2e345e4d-4788-48e3-ad1b-fcd6047196f2">	
-			<http:request method="POST" doc:name="Flight Status Service" doc:id="641040c1-888d-45f2-9f82-5401499fe143" config-ref="HTTP_15Below_Request_configuration" path="/FlightStatus.svc" sendCorrelationId="AUTO">
-			<http:headers ><![CDATA[#[output application/java
+		<until-successful maxRetries="${http.fifteenBelow.flight-status.maxRetries}" doc:name="Until Successful" doc:id="676dc2a1-8e43-4524-9c9e-1aa5e6ec513d" millisBetweenRetries="${http.fifteenBelow.flight-status.millisBetweenRetries}">
+			<http:request method="POST" doc:name="Flight Status Service" doc:id="641040c1-888d-45f2-9f82-5401499fe143" config-ref="HTTP_15Below_Request_configuration" path="${http.fifteenBelow.flight-status.path}" sendCorrelationId="AUTO">
+			<http:headers><![CDATA[#[output application/java
 ---
 {
-	"SOAPAction" : "http://schemas.15below.com/flightTrigger.criteria/IFlightStatus/NewFlightTrigger",
+	"SOAPAction" : p('http.fifteenBelow.flight-status.soapAction'),
 	"Content-Type" : "text/xml"
 }]]]></http:headers>
 		</http:request>
-		<ee:transform doc:name="Transform Message" doc:id="9c97d0b5-c088-416a-b110-2d5111229456" >
+		</until-successful>
+		<ee:transform doc:name="Transform payload to json" doc:id="9c97d0b5-c088-416a-b110-2d5111229456" >
 			<ee:message >
 				<ee:set-payload ><![CDATA[%dw 2.0
 output application/json
