@@ -6,9 +6,5 @@
 	{
 		"JMSEventType" : "FlightStatusDelayEvent",
 		"FlightStatusEvent": "ETDChange"
-	},
-	{
-		"JMSEventType" : "FlightStatusRescheduledEvent",
-		"FlightStatusEvent": "FlightRescheduled"
 	}
 ]

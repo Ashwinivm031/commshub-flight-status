@@ -3,8 +3,8 @@ activemq:
   user: "admin" 
   redelivery:
     max-attempts: "3"
-    initial-delay: "3600000"
-    delay: "3600000"
+    initial-delay: "5000"
+    delay: "5000"
   queue-consumer:
     flight-status-event-topic: "Consumer.15Below.VirtualTopic.events.airline.flops.flight-status"
   JMSType:

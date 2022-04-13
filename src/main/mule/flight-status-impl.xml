@@ -1,27 +1,24 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:wsc="http://www.mulesoft.org/schema/mule/wsc"
+<mule 
 	xmlns:http="http://www.mulesoft.org/schema/mule/http"
-	xmlns:module-aip-logging="http://www.mulesoft.org/schema/mule/module-aip-logging" xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns:module-aip-logging="http://www.mulesoft.org/schema/mule/module-aip-logging"
 	xmlns:jms="http://www.mulesoft.org/schema/mule/jms"
 	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
 http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd 
 http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
-http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
 http://www.mulesoft.org/schema/mule/module-aip-logging http://www.mulesoft.org/schema/mule/module-aip-logging/current/mule-module-aip-logging.xsd
-http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
-http://www.mulesoft.org/schema/mule/wsc http://www.mulesoft.org/schema/mule/wsc/current/mule-wsc.xsd">
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
 			
 	<flow name="jms-consumerFlow" doc:id="55ff1fa1-62fd-4bd6-b217-05ea472634d4" >
-		<jms:listener doc:name="Flight Status Event Listner" doc:id="5a34a21e-442d-4a3f-89c4-b29c98505eb2" config-ref="JMS_Config" destination="${activemq.queue-consumer.flight-status-event-topic}" ackMode="AUTO" numberOfConsumers="1" selector="JMSType='${activemq.JMSType.CancelledEvent}' OR JMSType='${activemq.JMSType.RescheduledEvent}' OR JMSType='${activemq.JMSType.DelayedEvent}'">
+		<jms:listener doc:name="Flight Status Event Listner" doc:id="5a34a21e-442d-4a3f-89c4-b29c98505eb2" config-ref="JMS_Config" destination="${activemq.queue-consumer.flight-status-event-topic}" ackMode="AUTO" numberOfConsumers="1" selector="JMSType='${activemq.JMSType.CancelledEvent}' OR JMSType='${activemq.JMSType.DelayedEvent}'">
 			<jms:consumer-type >
 				<jms:queue-consumer />
 			</jms:consumer-type>
 			<jms:response sendCorrelationId="ALWAYS" persistentDelivery="true"/>
 		</jms:listener>
 		<set-variable value='#[attributes.headers."JMSType"]' doc:name="Set JMSEventType" doc:id="3db85cc7-014c-4113-8f86-485649829f5b" variableName="JMSEventType"/>
-		<logger level="INFO" doc:name="Logger" doc:id="bc721d2d-37ce-4125-b3d3-ae83db1a52ce" />
-		<module-aip-logging:log-entry doc:name="Log The Received Event" doc:id="b776b8e0-8756-4515-8e74-de065c26c363" config-ref="Aip_logging_Config" message='#["The " ++ vars.JMSEventType default "" ++ " triggered"]' />
+		<module-aip-logging:log-entry doc:name="Log The Event Received" doc:id="b776b8e0-8756-4515-8e74-de065c26c363" config-ref="Aip_logging_Config" message='#["The " ++ vars.JMSEventType default "" ++ " triggered"]' />
 		<ee:transform doc:name="Trasform payload to Json" doc:id="39994398-cae7-4ff9-8e53-3eb9f24bc29c" >
 			<ee:message >
 				<ee:set-payload ><![CDATA[%dw 2.0
@@ -32,15 +29,9 @@ read(payload,"application/json")
 ]]></ee:set-payload>
 			</ee:message>
 		</ee:transform>
-		<logger level="INFO" doc:name="Logger" doc:id="82593fea-8210-4372-ba24-aadab416f114" message="#[payload]"/>
 		<flow-ref doc:name="Call: Flight Status" doc:id="64c690c8-4d32-43e5-b20a-228588785eb4" name="flightStatusFlow"/>
-		<raise-error doc:name="Raise error" doc:id="cedc3290-0101-4fae-93c4-5ae18a08f2be" type="HTTP:ANY" description='"Custom exception"'/>
 		<module-aip-logging:log-entry doc:name="Log Success" doc:id="1b97bd0f-0d24-438c-95a5-b91f95e8f67b" config-ref="Aip_logging_Config" message='#["15Below API call Success":payload]'/>
-		<error-handler>
-			<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="b9a19321-64dc-4c93-9e30-a2135bf41b5a" type="ANY">
-				<module-aip-logging:log-error doc:name="Log error" doc:id="40d06b0a-22da-4055-ba7d-dd5677922683" config-ref="Aip_logging_Config" message='#["Error occurred while parsing the event":payload]' />
-			</on-error-continue>
-		</error-handler>
+		<error-handler ref="globalErrorHandler" />
 	</flow>
 	<sub-flow name="flightStatusFlow" doc:id="2e345e4d-4788-48e3-ad1b-fcd6047196f2">	
 			<ee:transform doc:name="Build Request for Flight-Status Api" doc:id="d74bcaf3-8a14-47ba-af8c-f5524b7356a0">

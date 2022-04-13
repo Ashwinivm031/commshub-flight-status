@@ -1,12 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:http="http://www.mulesoft.org/schema/mule/http"
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
 	xmlns:secure-properties="http://www.mulesoft.org/schema/mule/secure-properties"
 	xmlns:module-aip-logging="http://www.mulesoft.org/schema/mule/module-aip-logging" 
 	xmlns:file="http://www.mulesoft.org/schema/mule/file"
 	xmlns:jms="http://www.mulesoft.org/schema/mule/jms" xmlns="http://www.mulesoft.org/schema/mule/core"
 	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd 
 http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd 
 http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd 
 http://www.mulesoft.org/schema/mule/module-aip-logging http://www.mulesoft.org/schema/mule/module-aip-logging/current/mule-module-aip-logging.xsd
@@ -19,8 +21,8 @@ http://www.mulesoft.org/schema/mule/secure-properties http://www.mulesoft.org/sc
 			</jms:caching-strategy>
 			<jms:factory-configuration brokerUrl="${activemq.broker-url}" initialRedeliveryDelay="${activemq.redelivery.initial-delay}" redeliveryDelay="${activemq.redelivery.delay}" maxRedelivery="${activemq.redelivery.max-attempts}" />
 		</jms:active-mq-connection>
+		<jms:consumer-config maxRedelivery="${activemq.redelivery.max-attempts}" />
 	</jms:config>
-	<file:config name="File_Config" doc:name="File Config" doc:id="d6db08a2-6276-4565-9922-d26b98212769" />
 	<configuration-properties doc:name="Configuration properties" doc:id="fc32f3f9-fc4f-4110-8324-eb81c085ad51" file="properties/${env}.yaml" />
 	<global-property doc:name="Global Property" doc:id="65dade61-0bb6-4abe-83f0-280d0c5ddbc1" name="env" value="local" />
 	<secure-properties:config name="Secure_Properties_Config" doc:name="Secure Properties Config" doc:id="48e64389-846a-4157-8589-24631c693903" file="properties/${env}-secure.yaml" key="${key}">
@@ -31,4 +33,186 @@ http://www.mulesoft.org/schema/mule/secure-properties http://www.mulesoft.org/sc
 		<http:request-connection protocol="HTTPS" host="${http.fifteenBelow.flight-status.host}" connectionIdleTimeout="${http.timeoutInMillis}"/>
 	</http:request-config>
 	<module-aip-logging:config name="Aip_logging_Config" doc:name="Aip-logging Config" doc:id="3368e798-2742-4bfb-bd12-c9474b208bc0" app="commshub-flight-status" appVersion="1.0.0-SNAPSHOT" />
+	<error-handler name="globalErrorHandler" doc:id="594c92cf-3f50-49ce-bd42-301d6395c052">
+		 		<on-error-propagate enableNotifications="true"
+			logException="true" doc:name="On Error Propagate"
+			doc:id="991584e3-21c0-4168-ae43-bd262ceb98a3" type="APIKIT:BAD_REQUEST">
+			<ee:transform doc:name="Set Error Response" doc:id="3d1993f9-f23e-4507-8b7a-cabe0d0cae24" >
+				<ee:message >
+				</ee:message>
+				<ee:variables >
+					<ee:set-variable variableName="errorResponse" ><![CDATA[%dw 2.0
+output application/java
+---
+{
+	httpStatus: 400,
+	errorCode: "ApplicationError",
+	errorMessage: "Bad Request"
+}]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<flow-ref doc:name="Call to set error payload"
+				doc:id="2bba3d55-fbcb-4f33-9392-50e8bb7dc620"
+				name="common-error-handling-utilitySub_Flow" />
+		</on-error-propagate>
+		<on-error-propagate type="APIKIT:NOT_FOUND" enableNotifications="true" logException="true">
+			<ee:transform doc:name="Set Error Response" doc:id="5f49cc2b-141a-445d-8f3a-7173c2e7a052">
+				<ee:message />
+				<ee:variables>
+					<ee:set-variable variableName="errorResponse"><![CDATA[%dw 2.0
+output application/java
+---
+{
+	httpStatus: 404,
+	errorCode: "ApplicationError",
+	errorMessage: "Not Found"
+}]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<flow-ref doc:name="Call to set error payload" doc:id="765a98ef-a360-4989-8240-8831b1a84d06" name="common-error-handling-utilitySub_Flow" />
+		</on-error-propagate>
+		<on-error-propagate
+			type="APIKIT:METHOD_NOT_ALLOWED">
+			<ee:transform doc:name="Set Error Response" doc:id="51eb8803-c8ad-4487-be90-133844bc34eb">
+				<ee:message />
+				<ee:variables>
+					<ee:set-variable variableName="errorResponse"><![CDATA[%dw 2.0
+output application/java
+---
+{
+	httpStatus: 405,
+	errorCode: "ApplicationError",
+	errorMessage: "Method Not Allowed"
+}]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<flow-ref doc:name="Call to set error payload" doc:id="59af3561-d08f-43ab-a1ff-5f7b7016cd7d" name="common-error-handling-utilitySub_Flow" />
+		</on-error-propagate>
+		<on-error-propagate type="APIKIT:NOT_ACCEPTABLE">
+			<ee:transform doc:name="Set Error Response" doc:id="b87a1b2c-a451-46c3-9b7f-43e6e0b8970b">
+				<ee:message />
+				<ee:variables>
+					<ee:set-variable variableName="errorResponse"><![CDATA[%dw 2.0
+output application/java
+---
+{
+	httpStatus: 406,
+	errorCode: "ApplicationError",
+	errorMessage: "Not Acceptable"
+}]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<flow-ref doc:name="Call to set error payload"
+				doc:id="364c6152-432e-46dc-9db9-632e8a0321dd"
+				name="common-error-handling-utilitySub_Flow" />
+		</on-error-propagate>
+		<on-error-propagate
+			type="APIKIT:UNSUPPORTED_MEDIA_TYPE">
+			<ee:transform doc:name="Set Error Response" doc:id="05b5b772-15fd-4d80-87ce-21fcb3a02363">
+				<ee:message />
+				<ee:variables>
+					<ee:set-variable variableName="errorResponse"><![CDATA[%dw 2.0
+output application/java
+---
+{
+	httpStatus: 415,
+	errorCode: "ApplicationError",
+	errorMessage: "Unsupported Media Type"
+}]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<flow-ref doc:name="Call to set error payload"
+				doc:id="f1eed7aa-0a0f-44f1-93b4-89e87dd5eaa5"
+				name="common-error-handling-utilitySub_Flow" />
+		</on-error-propagate>
+		<on-error-propagate type="APIKIT:NOT_IMPLEMENTED">
+			<ee:transform doc:name="Set Error Response" doc:id="2814dc6f-756d-4497-9477-93bb4a61b649">
+				<ee:message />
+				<ee:variables>
+					<ee:set-variable variableName="errorResponse"><![CDATA[%dw 2.0
+output application/java
+---
+{
+	httpStatus: 501,
+	errorCode: "ApplicationError",
+	errorMessage: "Not Implemented"
+}]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<flow-ref doc:name="Call to set error payload"
+				doc:id="2782d0ff-0f0e-4636-8998-bae4179558ad"
+				name="common-error-handling-utilitySub_Flow" />
+		</on-error-propagate>
+		<on-error-propagate type="HTTP:UNAUTHORIZED">
+			<ee:transform doc:name="Set Error Response" doc:id="78a4609d-dd0a-4236-988b-e25d2af9ef89">
+				<ee:message />
+				<ee:variables>
+					<ee:set-variable variableName="errorResponse"><![CDATA[%dw 2.0
+output application/java
+---
+{
+	httpStatus: 401,
+	errorCode: "ApplicationError",
+	errorMessage: "Unauthorized"
+}]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<flow-ref doc:name="Call to set error payload"
+				doc:id="cdc64f33-636f-4c98-aa70-1d8cd876d4d4"
+				name="common-error-handling-utilitySub_Flow" />
+		</on-error-propagate>
+		<on-error-propagate enableNotifications="true"
+			logException="true" doc:name="On Error Propagate"
+			doc:id="07d64954-704a-4cef-9f96-7f9390f171d2"
+			type="HTTP:INTERNAL_SERVER_ERROR, HTTP:CONNECTIVITY">
+			<ee:transform doc:name="Set Error Response" doc:id="c1469269-b703-4c76-ae64-bc1fd595dd44">
+				<ee:message />
+				<ee:variables>
+					<ee:set-variable variableName="errorResponse"><![CDATA[%dw 2.0
+output application/java
+---
+{
+	httpStatus: 500,
+	errorCode: "SystemError",
+	errorMessage: "Internal Server Error"
+}]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<flow-ref doc:name="Call to set error payload" doc:id="eceed5b9-7f55-4e4c-a544-c461d75c461a" name="common-error-handling-utilitySub_Flow" />
+		</on-error-propagate>
+		<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="d8c97597-75d4-4ee0-90b6-656de4445c4c" >
+			<ee:transform doc:name="Set Error Response" doc:id="ca5dd02e-b4d4-492c-a8b1-b96bac363290">
+				<ee:message />
+				<ee:variables>
+					<ee:set-variable variableName="errorResponse"><![CDATA[%dw 2.0
+output application/java
+---
+{
+	httpStatus: 500,
+	errorCode: "ApplicationError",
+	errorMessage: "Internal Server Error"
+}]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<flow-ref doc:name="Call to set error payload" doc:id="312a9a5e-571a-42f7-bf09-05caebc340fc" name="common-error-handling-utilitySub_Flow"/>
+		</on-error-propagate>
+	</error-handler>
+	<sub-flow name="common-error-handling-utilitySub_Flow"
+		doc:id="2df6e2f0-d195-4e6a-9fbf-68f92369ad3a">
+		<set-variable value="#[vars.errorResponse.httpStatus]" doc:name="Set the HTTP Status" doc:id="6567887b-116d-4aee-93b1-f07cbf34377b" variableName="httpStatus" />
+		<ee:transform doc:name="Set Error Payload"
+			doc:id="0537d433-7441-4df3-b734-e75ea990231b">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	code: vars.errorResponse.errorCode default "SystemError",
+	message: if ( !isEmpty(error.detailedDescription) ) vars.errorResponse.errorMessage default "" ++ ' - ' ++ (error.detailedDescription default "") else vars.errorResponse.errorMessage default ""
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="ERROR" doc:name="Log Error"
+			doc:id="7bc344b0-7db7-46f9-a1dc-5ccb11667450" message=" #[payload]" />
+	</sub-flow>
 	</mule>
