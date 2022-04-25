@@ -11,11 +11,13 @@ http://www.mulesoft.org/schema/mule/module-aip-logging http://www.mulesoft.org/s
 http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
 			
 	<flow name="jms-consumerFlow" doc:id="55ff1fa1-62fd-4bd6-b217-05ea472634d4" >
-		<jms:listener doc:name="Flight Status Event Listner" doc:id="5a34a21e-442d-4a3f-89c4-b29c98505eb2" config-ref="JMS_Config" destination="${activemq.queue-consumer.flight-status-event-topic}" ackMode="AUTO" numberOfConsumers="1" selector="JMSType='${activemq.JMSType.CancelledEvent}' OR JMSType='${activemq.JMSType.DelayedEvent}'">
+		<jms:listener doc:name="Flight Status Event Listner" doc:id="5a34a21e-442d-4a3f-89c4-b29c98505eb2" config-ref="JMS_Config" destination="${activemq.queue-consumer.flight-status-event-topic}" ackMode="AUTO" numberOfConsumers="1">
 			<jms:consumer-type >
 				<jms:queue-consumer />
 			</jms:consumer-type>
-			<jms:response sendCorrelationId="ALWAYS" persistentDelivery="true"/>
+			<jms:response sendCorrelationId="ALWAYS" persistentDelivery="true" priority="9" deliveryDelay="1000" deliveryDelayUnit="MILLISECONDS">
+				<jms:reply-to destination="${activemq.queue-consumer.flight-status-event-topic}" />
+			</jms:response>
 		</jms:listener>
 		<set-variable value='#[attributes.headers."JMSType"]' doc:name="Set JMSEventType" doc:id="3db85cc7-014c-4113-8f86-485649829f5b" variableName="JMSEventType"/>
 		<module-aip-logging:log-entry doc:name="Log The Event Received" doc:id="b776b8e0-8756-4515-8e74-de065c26c363" config-ref="Aip_logging_Config" message='#["The " ++ vars.JMSEventType default "" ++ " triggered"]' />
@@ -30,11 +32,12 @@ read(payload,"application/json")
 			</ee:message>
 		</ee:transform>
 		<flow-ref doc:name="Call: Flight Status" doc:id="64c690c8-4d32-43e5-b20a-228588785eb4" name="flightStatusFlow"/>
-		<module-aip-logging:log-entry doc:name="Log Success" doc:id="1b97bd0f-0d24-438c-95a5-b91f95e8f67b" config-ref="Aip_logging_Config" message='#["15Below API call Success":payload]'/>
+		<module-aip-logging:log-entry doc:name="Log Success" doc:id="1b97bd0f-0d24-438c-95a5-b91f95e8f67b" config-ref="Aip_logging_Config"/>
 		<error-handler ref="globalErrorHandler" />
 	</flow>
 	<sub-flow name="flightStatusFlow" doc:id="2e345e4d-4788-48e3-ad1b-fcd6047196f2">	
-			<ee:transform doc:name="Build Request for Flight-Status Api" doc:id="d74bcaf3-8a14-47ba-af8c-f5524b7356a0">
+			<raise-error doc:name="Raise error" doc:id="5fa65d6f-3682-41ab-8829-8add3baa645e" type="ANY" description="Errorrrr" />
+		<ee:transform doc:name="Build Request for Flight-Status Api" doc:id="d74bcaf3-8a14-47ba-af8c-f5524b7356a0">
 			<ee:message>
 				<ee:set-payload><![CDATA[%dw 2.0
 output application/xml
@@ -110,13 +113,5 @@ fun getFlightTravelInfo(airport, dateTime)=do {
 }]]]></http:headers>
 		</http:request>
 		</until-successful>
-		<ee:transform doc:name="Transform payload to json" doc:id="9c97d0b5-c088-416a-b110-2d5111229456" >
-			<ee:message >
-				<ee:set-payload ><![CDATA[%dw 2.0
-output application/json
----
-payload]]></ee:set-payload>
-			</ee:message>
-		</ee:transform>
 	</sub-flow>
 	</mule>

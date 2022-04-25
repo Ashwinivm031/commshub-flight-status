@@ -1,0 +1,22 @@
+activemq:
+  broker-url: "failover:(tcp://jbossamq11.qa2.allegiantair.com:61616,tcp://jbossamq12.qa2.allegiantair.com:61616)?randomize=false&initialReconnectDelay=10000&jms.rmIdFromConnectionId=true&maxReconnectAttempts=0"
+  user: "admin" 
+  redelivery:
+    max-attempts: "3"
+    initial-delay: "5000"
+    delay: "5000"
+  queue-consumer:
+    flight-status-event-topic: "Consumer.15Below.VirtualTopic.events.airline.flops.flight-status"
+  JMSType:
+    CancelledEvent: "FlightStatusCanceledEvent"
+    RescheduledEvent: "FlightStatusRescheduledEvent"
+    DelayedEvent: "FlightStatusDelayEvent"
+http:
+  timeoutInMillis: "300000"
+  fifteenBelow:
+    flight-status:
+      host: "g4-tst-flightstatus-api.pasngr.com"
+      path: "/v2_0_0/FlightStatus.svc"
+      soapAction: "http://schemas.15below.com/flightTrigger.criteria/IFlightStatus/NewFlightTrigger"
+      maxRetries: "3"
+      millisBetweenRetries: "1000"
